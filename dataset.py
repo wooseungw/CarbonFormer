@@ -10,7 +10,7 @@ def get_image_paths(path):
     image_paths = []
     for filename in os.listdir(path):
         if filename.endswith('.tif') or filename.endswith('.png'):
-            image_paths.append(os.path.join(path, filename))
+            image_paths.append(os.path.join(path, filename).replace('\\', '/'))
     if len(image_paths) != 0:
         print(path, "Done.",end='/')
     print()
@@ -147,13 +147,9 @@ class CarbonDataset(Dataset):
             gt = self.label_transform(gt)
             
         gt = torch.tensor(np.array(gt), dtype=torch.float32).unsqueeze(0)
-
         carbon = torch.tensor(np.array(carbon), dtype=torch.float32).unsqueeze(0)
         
-        # Concatenate image and sh along the channel dimension
-        image_sh = torch.cat((image, sh), dim=0)
-
-        return image_sh , carbon , gt
+        return image, sh , carbon , gt
 
 class CombinedCarbonDataset(Dataset):
     def __init__(self, folder_paths, image_transform=None, sh_transform=None, label_transform=None, mode="Train"):
@@ -210,8 +206,9 @@ class CombinedCarbonDataset(Dataset):
         gt = torch.tensor(np.array(gt), dtype=torch.float32).unsqueeze(0)
         carbon = torch.tensor(np.array(carbon), dtype=torch.float32).unsqueeze(0)
         
+        # Concatenate image and sh along the channel dimension
         image_sh = torch.cat((image, sh), dim=0)
-
+        
         return image_sh, carbon, gt
   
 # 시각화 코드 예시
