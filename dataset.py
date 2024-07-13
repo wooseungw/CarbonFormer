@@ -154,10 +154,7 @@ class CarbonDataset(Dataset):
 
 class CarbonDataset_csv(Dataset):
     def __init__(self, csv_file, image_transform=None, sh_transform=None, label_transform=None, mode="Train"):
-        if mode == "Valid":
-            mode = "Validation"
-        else:
-            mode = "Training"
+        self.mode = mode
         self.data = pd.read_csv(csv_file, header=None, names=['Image_Path', 'SH_Path', 'Carbon_Path', 'GT_Path'])        
 
         
@@ -169,12 +166,16 @@ class CarbonDataset_csv(Dataset):
     def __len__(self):
         return len(self.data)
 
-
     def __getitem__(self, idx):
         img_path = self.data.iloc[idx, 0]
         sh_path = self.data.iloc[idx, 1]
         carbon_path = self.data.iloc[idx, 2]
         gt_path = self.data.iloc[idx, 3]
+        if self.mode == "Valid":
+            img_path = img_path.replace("Training", "Validation")
+            sh_path = sh_path.replace("Training", "Validation")
+            carbon_path = carbon_path.replace("Training", "Validation")
+            gt_path = gt_path.replace("Training", "Validation")
         
         # 이미지 로드
         image = Image.open(img_path).convert('RGB')

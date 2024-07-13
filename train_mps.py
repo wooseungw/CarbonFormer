@@ -15,15 +15,15 @@ import wandb
 import os
 def main():
     FOLDER_PATH={
-    'Dataset/Training/image/AP10_Forest_IMAGE':4,
-    'Dataset/Training/image/AP25_Forest_IMAGE':4,   
-    'Dataset/Training/image/AP10_City_IMAGE':4,
-    'Dataset/Training/image/AP25_City_IMAGE':4,
-    'Dataset/Training/image/SN10_Forest_IMAGE':4,
+    'AP10_Forest_IMAGE.csv':4,
+    'AP25_Forest_IMAGE.csv':4,   
+    'AP10_City_IMAGE.csv':4,
+    'AP25_City_IMAGE.csv':4,
+    'SN10_Forest_IMAGE.csv':4,
     }
     
-    fp = "Dataset/Training/image/AP25_Forest_IMAGE"
-    target_fp = "Dataset/Training/image/AP25_City_IMAGE"
+    fp = "AP25_Forest_IMAGE.csv"
+    target_fp = "AP25_City_IMAGE.csv"
     label_size = 256 // 2
     args = {
     'dims': (32, 64, 160, 256),
@@ -40,15 +40,14 @@ def main():
                                    (3, 2, 1), 
                                    (3, 2, 1)],
     }
-
     epochs = 100
     lr = 1e-4
     device = select_device()
-    batch_size = 8
+    batch_size = 4
     cls_lambda = 0.995
     reg_lambda = 0.005
-    source_dataset_name = fp.split("/")[-1]
-    target_dataset_name = target_fp.split("/")[-1]
+    source_dataset_name = fp.split(".")[0]
+    target_dataset_name = target_fp.split(".")[0]
     model_name = "CarbonFormer_v1"
     checkpoint_path = f"checkpoints/{model_name}/"
     name = f"{model_name}"+"B0"+source_dataset_name.replace("_IMAGE", "")+f"_{label_size}"
@@ -96,14 +95,14 @@ def main():
     ])
 
     # 데이터셋 및 데이터 로더 생성
-    train_dataset = CarbonDataset(fp, image_transform, sh_transform, label_transform,mode="Train")
-    val_dataset = CarbonDataset(fp, image_transform,sh_transform, label_transform,mode="Valid")
+    train_dataset = CarbonDataset_csv(fp, image_transform, sh_transform, label_transform,mode="Train")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    val_dataset = CarbonDataset_csv(fp, image_transform,sh_transform, label_transform,mode="Valid")
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
     
-    target_dataset = CarbonDataset(target_fp, image_transform, sh_transform, label_transform,mode="Train")
+    target_dataset = CarbonDataset_csv(target_fp, image_transform, sh_transform, label_transform,mode="Train")
     target_loader = DataLoader(target_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
-    target_val_dataset = CarbonDataset(target_fp, image_transform,sh_transform, label_transform,mode="Valid")
+    target_val_dataset = CarbonDataset_csv(target_fp, image_transform,sh_transform, label_transform,mode="Valid")
     target_val_loader = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
      
     # 모델 생성
@@ -112,11 +111,11 @@ def main():
     if pretrain != None:
         model.load_state_dict(torch.load(pretrain, map_location=torch.device('cpu')), strict=False)
     model.to(device)
-    #model = UNet_carbon(FOLDER_PATH[fp],dropout=True).to(device)
+    
     # 손실 함수 및 옵티마이저 정의
     #gt_criterion = nn.CrossEntropyLoss(torch.tensor([0.] + [1.] * (FOLDER_PATH[fp]-1), dtype=torch.float)).to(device)
     loss = CarbonLoss(num_classes=FOLDER_PATH[fp],cls_lambda=cls_lambda,reg_lambda=reg_lambda).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
+    optimizer = optim.AdamW(model.parameters(), lr=lr)
     # 학습
     glob_val_loss = 9e20
     for epoch in (range(epochs)):
@@ -151,7 +150,7 @@ def main():
             train_total_miou += miou
             train_batches += 1
         #City
-        for x,sh, carbon, gt in tqdm(train_loader, desc=f"Training City Epoch {epoch+1}"):
+        for x,sh, carbon, gt in tqdm(target_loader, desc=f"Training City Epoch {epoch+1}"):
             optimizer.zero_grad()
             x = x.to(device)
             sh = sh.to(device)
@@ -199,9 +198,7 @@ def main():
             gt = gt.to(device)
             
             gt_pred, carbon_pred  = model(x,sh)
-            
             total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
-
             # 전체 손실 및 정확도 누적
             total_loss += total_loss.item()
             total_cls_loss += cls_loss.item()
@@ -211,7 +208,7 @@ def main():
             total_miou += miou
             total_batches += 1
             
-        for x,sh, carbon, gt in tqdm(val_loader, desc=f"Validation City Epoch {epoch+1}"):
+        for x,sh, carbon, gt in tqdm(target_val_loader, desc=f"Validation City Epoch {epoch+1}"):
             x = x.to(device)
             sh = sh.to(device)
             carbon = carbon.to(device)
@@ -229,7 +226,7 @@ def main():
             total_acc_r += acc_r
             total_miou += miou
             total_batches += 1
-            
+
         # 전체 평균 손실과 정확도 계산
         avg_loss = total_loss / total_batches
         avg_cls_loss = total_cls_loss / total_batches
@@ -239,15 +236,13 @@ def main():
         avg_miou = total_miou / total_batches
         if avg_loss < glob_val_loss:
             glob_val_loss = avg_loss
-            
-            torch.save(model.state_dict(), f"{checkpoint_path}/{name}_best.pth")
+            torch.save(model.state_dict(), f"{checkpoint_path}/{name}_best{epoch+1}.pth")
 
         print(f"Validation Loss: {avg_loss:.4f}, Validation cls_loss: {avg_cls_loss:.4f}, Validation reg_loss: {avg_reg_loss:.4f}, Validation acc_c: {avg_acc_c:.4f}, Validation acc_r: {avg_acc_r:.4f}, Validation miou: {avg_miou:.4f}")
         wandb.log({"Validation Loss":avg_loss, "Validation cls_loss":avg_cls_loss, "Validation reg_loss":avg_reg_loss, "Validation acc_c":avg_acc_c, "Validation acc_r":avg_acc_r , "Validation miou":avg_miou})
         wandb.log({"Epoch":epoch+1})
     torch.save(model.state_dict(), f"{checkpoint_path}/{name}_last_{epoch+1}.pth")
     wandb.finish()
+    
 if __name__ =="__main__":
-    
-    
     main()
