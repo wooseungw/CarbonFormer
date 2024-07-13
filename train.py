@@ -35,7 +35,7 @@ def main():
     'divisor': 4,
     'channels': 3,#input channels
     'num_classes': FOLDER_PATH[fp],
-    'stage_kernel_stride_pad': [(7, 2, 3),
+    'stage_kernel_stride_pad': [(7, 4, 3),
                                    (3, 2, 1), 
                                    (3, 2, 1), 
                                    (3, 2, 1)],
@@ -87,7 +87,7 @@ def main():
     ])
 
     label_transform = transforms.Compose([
-        transforms.Resize((256//2, 256//2)), 
+        transforms.Resize((256//4, 256//4)), 
     ])
 
     resizer = transforms.Compose([
