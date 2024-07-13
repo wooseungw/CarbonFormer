@@ -43,7 +43,7 @@ def main():
     epochs = 100
     lr = 1e-4
     device = select_device()
-    batch_size = 2
+    batch_size = 1
     cls_lambda = 0.995
     reg_lambda = 0.005
     source_dataset_name = fp.split(".")[0]
