@@ -130,13 +130,14 @@ def main():
         train_total_miou = 0.0
         train_batches = 0
         #Forest
-        for x, carbon, gt in tqdm(train_loader, desc=f"Training Forest Epoch {epoch+1}"):
+        for x,sh, carbon, gt in tqdm(train_loader, desc=f"Training Forest Epoch {epoch+1}"):
             optimizer.zero_grad()
             x = x.to(device)
+            sh = sh.to(device)
             carbon = carbon.to(device)
             gt = gt.to(device)
             
-            gt_pred, carbon_pred  = model(x)
+            gt_pred, carbon_pred  = model(x,sh)
             
             total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
             
@@ -210,12 +211,13 @@ def main():
         total_miou = 0.0
         total_batches = 0
         
-        for x, carbon, gt in tqdm(val_loader, desc=f"Validation Forest Epoch {epoch+1}"):
+        for x,sh, carbon, gt in tqdm(val_loader, desc=f"Validation Forest Epoch {epoch+1}"):
             x = x.to(device)
+            sh = sh.to(device)
             carbon = carbon.to(device)
             gt = gt.to(device)
             
-            gt_pred, carbon_pred  = model(x)
+            gt_pred, carbon_pred  = model(x,sh)
             
             total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
 
