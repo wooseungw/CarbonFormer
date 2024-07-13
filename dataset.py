@@ -5,6 +5,7 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def get_image_paths(path):
     image_paths = []
@@ -151,65 +152,62 @@ class CarbonDataset(Dataset):
         
         return image, sh , carbon , gt
 
-class CombinedCarbonDataset(Dataset):
-    def __init__(self, folder_paths, image_transform=None, sh_transform=None, label_transform=None, mode="Train"):
+class CarbonDataset_csv(Dataset):
+    def __init__(self, csv_file, image_transform=None, sh_transform=None, label_transform=None, mode="Train"):
         if mode == "Valid":
             mode = "Validation"
         else:
             mode = "Training"
-        
-        self.image_paths = []
-        self.sh_paths = []
-        self.carbon_paths = []
-        self.gt_paths = []
-        
-        for folder_path in folder_paths:
-            folder_path = folder_path.replace("Training", mode)
-            self.image_paths += get_image_paths(folder_path)
-            self.sh_paths += get_image_paths(folder_path.replace("IMAGE", "SH"))
-            folder_path_label = folder_path.replace("image", "label")
-            self.carbon_paths += get_image_paths(folder_path_label.replace("IMAGE", "Carbon"))
-            self.gt_paths += get_image_paths(folder_path_label.replace("IMAGE", "GT"))
+        self.data = pd.read_csv(csv_file, header=None, names=['Image_Path', 'SH_Path', 'Carbon_Path', 'GT_Path'])        
+
         
         self.image_transform = image_transform
         self.sh_transform = sh_transform
         self.label_transform = label_transform
-        self.Mapping = Mapping(folder_path_label)
+        self.Mapping = Mapping(self.data.iloc[0, 0])
 
     def __len__(self):
-        return len(self.image_paths)
+        return len(self.data)
+
 
     def __getitem__(self, idx):
-        image_path = self.image_paths[idx]
-        image = Image.open(image_path).convert('RGB')
+        img_path = self.data.iloc[idx, 0]
+        sh_path = self.data.iloc[idx, 1]
+        carbon_path = self.data.iloc[idx, 2]
+        gt_path = self.data.iloc[idx, 3]
         
-        sh_path = self.sh_paths[idx]
-        sh = Image.open(sh_path).convert('L')
-        
-        carbon_path = self.carbon_paths[idx]
-        carbon = Image.open(carbon_path)
-        
-        gt_paths = self.gt_paths[idx]
-        gt = Image.open(gt_paths).convert('L')
+        # 이미지 로드
+        image = Image.open(img_path).convert('RGB')
+        sh = Image.open(sh_path).convert('L')  # SH 이미지를 그레이스케일로 변환
+        carbon = Image.open(carbon_path).convert('L')
+        gt = Image.open(gt_path).convert('L')
+
+        # GT 이미지에 매핑 적용
         gt = self.Mapping(gt)
         
+        # 변환 적용
         if self.image_transform:
             image = self.image_transform(image)
-            
+        
         if self.sh_transform:
             sh = self.sh_transform(sh)
-            
+        
         if self.label_transform:
             carbon = self.label_transform(carbon)
             gt = self.label_transform(gt)
-            
-        gt = torch.tensor(np.array(gt), dtype=torch.float32).unsqueeze(0)
-        carbon = torch.tensor(np.array(carbon), dtype=torch.float32).unsqueeze(0)
         
-        # Concatenate image and sh along the channel dimension
-        image_sh = torch.cat((image, sh), dim=0)
+        # 텐서로 변환
+        if not isinstance(image, torch.Tensor):
+            image = torch.tensor(np.array(image).transpose((2, 0, 1)), dtype=torch.float32) / 255.0
+        if not isinstance(sh, torch.Tensor):
+            sh = torch.tensor(np.array(sh), dtype=torch.float32).unsqueeze(0) / 255.0
+        if not isinstance(carbon, torch.Tensor):
+            carbon = torch.tensor(np.array(carbon), dtype=torch.float32).unsqueeze(0) / 255.0
+        if not isinstance(gt, torch.Tensor):
+            gt = torch.tensor(np.array(gt), dtype=torch.float32).unsqueeze(0)
         
-        return image_sh, carbon, gt
+        
+        return image, sh, carbon, gt
   
 # 시각화 코드 예시
 def imshow(tensor, title=None):
@@ -221,11 +219,11 @@ def imshow(tensor, title=None):
 
 if __name__ == "__main__":
     # Set the folder path for the dataset
-    folder_paths = ['Dataset/Training/image/AP25_Forest_IMAGE','Dataset/Training/image/AP25_City_IMAGE']
+    folder_paths = ['dataset/training/image/AP25_City_IMAGE','dataset/training/image/AP25_Forest_IMAGE']
     transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
     transform_label = transforms.Compose([transforms.Resize((256//2, 256//2))])
     # Create an instance of the CustomImageDataset class
-    dataset = CombinedCarbonDataset(folder_paths, transform, transform, transform_label, mode="Train")  
+    dataset = CarbonDataset_csv("dataset/SN10_Forest_IMAGE.csv", transform, transform, transform_label, mode="Train")  
     print(len(dataset))
   
   
