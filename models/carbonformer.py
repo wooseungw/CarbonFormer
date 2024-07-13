@@ -258,8 +258,8 @@ class Regression_head(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.to_regression = nn.Sequential(
-            nn.Conv2d(5 * dim, dim, 1),
-            nn.Conv2d(dim, 1, 1),
+            nn.Conv2d(5 * dim, 5 * dim, kernel_size=1, groups=5 * dim),
+            nn.Conv2d(5 *dim, 1, 1),
         )
         
     def forward(self, x):

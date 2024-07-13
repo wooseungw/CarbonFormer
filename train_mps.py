@@ -87,7 +87,7 @@ def main():
     ])
 
     label_transform = transforms.Compose([
-        transforms.Resize((256//2, 256//2)), 
+        transforms.Resize((256//4, 256//4)), 
     ])
 
     resizer = transforms.Compose([
@@ -96,14 +96,14 @@ def main():
 
     # 데이터셋 및 데이터 로더 생성
     train_dataset = CarbonDataset_csv(fp, image_transform, sh_transform, label_transform,mode="Train")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
     val_dataset = CarbonDataset_csv(fp, image_transform,sh_transform, label_transform,mode="Valid")
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
     
     target_dataset = CarbonDataset_csv(target_fp, image_transform, sh_transform, label_transform,mode="Train")
-    target_loader = DataLoader(target_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    target_loader = DataLoader(target_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
     target_val_dataset = CarbonDataset_csv(target_fp, image_transform,sh_transform, label_transform,mode="Valid")
-    target_val_loader = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    target_val_loader = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
      
     # 모델 생성
     if model_name == "CarbonFormer_v1":

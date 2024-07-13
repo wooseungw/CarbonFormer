@@ -24,7 +24,7 @@ def main():
     
     fp = "AP25_Forest_IMAGE.csv"
     target_fp = "AP25_City_IMAGE.csv"
-    label_size = 256 // 2
+    label_size = 256 // 4
     args = {
     'dims': (32, 64, 160, 256),
     'heads': (1, 2, 5, 8),
@@ -87,7 +87,7 @@ def main():
     ])
 
     label_transform = transforms.Compose([
-        transforms.Resize((256//4, 256//4)), 
+        transforms.Resize((label_size, label_size)), 
     ])
 
     resizer = transforms.Compose([
