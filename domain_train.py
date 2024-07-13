@@ -13,7 +13,6 @@ from models.metrics import CarbonLoss
 
 import wandb
 import os
-
 def main():
     FOLDER_PATH={
     'Dataset/Training/image/AP10_Forest_IMAGE':4,
@@ -152,34 +151,16 @@ def main():
             train_total_miou += miou
             train_batches += 1
         #City
-        for x, carbon, gt in tqdm(target_loader, desc=f"Training City Epoch {epoch+1}"):
-            assert gt.min() >= 0 and gt.max() < FOLDER_PATH[fp], "라벨 값이 유효한 범위를 벗어났습니다."
+        for x,sh, carbon, gt in tqdm(train_loader, desc=f"Training City Epoch {epoch+1}"):
             optimizer.zero_grad()
-            #x = torch.cat((x, x_t), dim=0)
-            # random_index = torch.randint(1, x.size(2), (x.size(2)//2,))
-            # new = mix_patch(x, random_index, dataset_num=2, kernel_size=16)
-            # x = torch.cat((x,new),dim=0)
             x = x.to(device)
-            
-            #carbon = torch.cat((carbon, carbon_t), dim=0)
-            # new = mix_patch(carbon,random_index,dataset_num=2,kernel_size=16)
-            # carbon = torch.cat((carbon,new),dim=0)
-            # carbon = resizer(carbon)
+            sh = sh.to(device)
             carbon = carbon.to(device)
-            
-            #gt = torch.cat((gt, gt_t), dim=0)
-            # new = mix_patch(gt,random_index,dataset_num=2,kernel_size=16)
-            # gt = torch.cat((gt,new),dim=0)
-            # gt = resizer(gt)
             gt = gt.to(device)
             
-            new = None
+            gt_pred, carbon_pred  = model(x,sh)
             
-            
-            gt_pred, carbon_pred  = model(x)
-            #print(gt_pred.shape, gt_pred.type, gt.squeeze(1).shape, carbon_pred.shape, carbon.shape)
             total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
-            #total_loss = gt_criterion(gt_pred, gt.squeeze(1))
             
             total_loss.backward()
             optimizer.step()
@@ -230,12 +211,13 @@ def main():
             total_miou += miou
             total_batches += 1
             
-        for x, carbon, gt in tqdm(target_val_loader, desc=f"Validation City Epoch {epoch+1}"):
+        for x,sh, carbon, gt in tqdm(val_loader, desc=f"Validation City Epoch {epoch+1}"):
             x = x.to(device)
+            sh = sh.to(device)
             carbon = carbon.to(device)
             gt = gt.to(device)
             
-            gt_pred, carbon_pred  = model(x)
+            gt_pred, carbon_pred  = model(x,sh)
             
             total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
 
