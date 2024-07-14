@@ -13,6 +13,37 @@ from models.metrics import CarbonLoss
 
 import wandb
 import os
+def train(epoch, device, model, optimizer, loss, loader, domain="Forest"):
+    model.train()
+    train_stats = {
+        'total_loss': 0.0,
+        'total_cls_loss': 0.0,
+        'total_reg_loss': 0.0,
+        'total_acc_c': 0.0,
+        'total_acc_r': 0.0,
+        'total_miou': 0.0,
+        'batches': 0
+    }
+    
+    for x, sh, carbon, gt in tqdm(loader, desc=f"Training {domain} Epoch {epoch+1}"):
+        optimizer.zero_grad()
+        x, sh, carbon, gt = x.to(device), sh.to(device), carbon.to(device), gt.to(device)
+        gt_pred, carbon_pred = model(x, sh)
+        total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
+        
+        total_loss.backward()
+        optimizer.step()
+        
+        train_stats['total_loss'] += total_loss.item()
+        train_stats['total_cls_loss'] += cls_loss.item()
+        train_stats['total_reg_loss'] += reg_loss.item()
+        train_stats['total_acc_c'] += acc_c
+        train_stats['total_acc_r'] += acc_r
+        train_stats['total_miou'] += miou
+        train_stats['batches'] += 1
+        
+    return train_stats
+
 def main():
     FOLDER_PATH={
     'AP10_Forest_IMAGE.csv':4,
@@ -24,7 +55,7 @@ def main():
     
     fp = "AP25_Forest_IMAGE.csv"
     target_fp = "AP25_City_IMAGE.csv"
-    label_size = 256 // 2
+    label_size = 256 // 4
     args = {
     'dims': (32, 64, 160, 256),
     'heads': (1, 2, 5, 8),
@@ -35,12 +66,12 @@ def main():
     'divisor': 4,
     'channels': 3,#input channels
     'num_classes': FOLDER_PATH[fp],
-    'stage_kernel_stride_pad': [(3, 2, 1), 
+    'stage_kernel_stride_pad': [(7, 4, 3), 
                                    (3, 2, 1), 
                                    (3, 2, 1), 
                                    (3, 2, 1)],
     }
-    epochs = 100
+    epochs = 1
     lr = 1e-4
     device = select_device()
     batch_size = 1
@@ -87,7 +118,7 @@ def main():
     ])
 
     label_transform = transforms.Compose([
-        transforms.Resize((256//4, 256//4)), 
+        transforms.Resize((label_size, label_size)), 
     ])
 
     resizer = transforms.Compose([
@@ -96,14 +127,14 @@ def main():
 
     # 데이터셋 및 데이터 로더 생성
     train_dataset = CarbonDataset_csv(fp, image_transform, sh_transform, label_transform,mode="Train")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
     val_dataset = CarbonDataset_csv(fp, image_transform,sh_transform, label_transform,mode="Valid")
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
     
     target_dataset = CarbonDataset_csv(target_fp, image_transform, sh_transform, label_transform,mode="Train")
-    target_loader = DataLoader(target_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+    target_loader = DataLoader(target_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
     target_val_dataset = CarbonDataset_csv(target_fp, image_transform,sh_transform, label_transform,mode="Valid")
-    target_val_loader = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+    target_val_loader = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
      
     # 모델 생성
     if model_name == "CarbonFormer_v1":
@@ -118,70 +149,38 @@ def main():
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     # 학습
     glob_val_loss = 9e20
-    for epoch in (range(epochs)):
-        model.train()
-        train_total_loss = 0.0
-        train_total_cls_loss = 0.0
-        train_total_reg_loss = 0.0
-        train_total_acc_c = 0.0
-        train_total_acc_r = 0.0
-        train_total_miou = 0.0
-        train_batches = 0
-        #Forest
-        for x,sh, carbon, gt in tqdm(train_loader, desc=f"Training Forest Epoch {epoch+1}"):
-            optimizer.zero_grad()
-            x = x.to(device)
-            sh = sh.to(device)
-            carbon = carbon.to(device)
-            gt = gt.to(device)
-            
-            gt_pred, carbon_pred  = model(x,sh)
-            
-            total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
-            
-            total_loss.backward()
-            optimizer.step()
-            # 훈련 손실 및 정확도 누적
-            train_total_loss += total_loss.item()
-            train_total_cls_loss += cls_loss.item()
-            train_total_reg_loss += reg_loss.item()
-            train_total_acc_c += acc_c
-            train_total_acc_r += acc_r
-            train_total_miou += miou
-            train_batches += 1
-        #City
-        for x,sh, carbon, gt in tqdm(target_loader, desc=f"Training City Epoch {epoch+1}"):
-            optimizer.zero_grad()
-            x = x.to(device)
-            sh = sh.to(device)
-            carbon = carbon.to(device)
-            gt = gt.to(device)
-            
-            gt_pred, carbon_pred  = model(x,sh)
-            
-            total_loss, cls_loss, reg_loss, acc_c, acc_r, miou = loss(gt_pred, gt.squeeze(1), carbon_pred, carbon)
-            
-            total_loss.backward()
-            optimizer.step()
-            # 훈련 손실 및 정확도 누적
-            train_total_loss += total_loss.item()
-            train_total_cls_loss += cls_loss.item()
-            train_total_reg_loss += reg_loss.item()
-            train_total_acc_c += acc_c
-            train_total_acc_r += acc_r
-            train_total_miou += miou
-            train_batches += 1
+    for epoch in range(epochs):
+        train_stats = {
+            'total_loss': 0.0,
+            'total_cls_loss': 0.0,
+            'total_reg_loss': 0.0,
+            'total_acc_c': 0.0,
+            'total_acc_r': 0.0,
+            'total_miou': 0.0,
+            'batches': 0
+        }
+
+        # Forest 도메인 훈련
+        forest_stats = train(epoch, device, model, optimizer, loss, train_loader)
         
-        # 훈련 손실과 정확도 평균 계산
-        avg_train_loss = train_total_loss / train_batches
-        avg_train_cls_loss = train_total_cls_loss / train_batches
-        avg_train_reg_loss = train_total_reg_loss / train_batches
-        avg_train_acc_c = train_total_acc_c / train_batches
-        avg_train_acc_r = train_total_acc_r / train_batches
-        avg_train_miou = train_total_miou / train_batches
+        # City 도메인 훈련
+        city_stats = train(epoch, device, model, optimizer, loss, target_loader, domain="City")
+        
+        # 결과 누적
+        for key in train_stats:
+            train_stats[key] += forest_stats[key] + city_stats[key]
+
+        # 평균 계산
+        avg_train_loss = train_stats['total_loss'] / train_stats['batches']
+        avg_train_cls_loss = train_stats['total_cls_loss'] / train_stats['batches']
+        avg_train_reg_loss = train_stats['total_reg_loss'] / train_stats['batches']
+        avg_train_acc_c = train_stats['total_acc_c'] / train_stats['batches']
+        avg_train_acc_r = train_stats['total_acc_r'] / train_stats['batches']
+        avg_train_miou = train_stats['total_miou'] / train_stats['batches']
 
         print(f"Epoch {epoch+1}, Train Loss: {avg_train_loss:.4f}, Train cls_loss: {avg_train_cls_loss:.4f}, Train reg_loss: {avg_train_reg_loss:.4f}, Train acc_c: {avg_train_acc_c:.4f}, Train acc_r: {avg_train_acc_r:.4f} , Train miou: {avg_train_miou:.4f}")
-        wandb.log({"Train Loss":avg_train_loss, "Train cls_loss":avg_train_cls_loss, "Train reg_loss":avg_train_reg_loss, "Train acc_c":avg_train_acc_c, "Train acc_r":avg_train_acc_r, "Train miou":avg_train_miou})
+        wandb.log({"Train Loss": avg_train_loss, "Train cls_loss": avg_train_cls_loss, "Train reg_loss": avg_train_reg_loss, "Train acc_c": avg_train_acc_c, "Train acc_r": avg_train_acc_r, "Train miou": avg_train_miou})
+
         model.eval()
         total_loss = 0.0
         total_cls_loss = 0.0
@@ -241,7 +240,7 @@ def main():
         print(f"Validation Loss: {avg_loss:.4f}, Validation cls_loss: {avg_cls_loss:.4f}, Validation reg_loss: {avg_reg_loss:.4f}, Validation acc_c: {avg_acc_c:.4f}, Validation acc_r: {avg_acc_r:.4f}, Validation miou: {avg_miou:.4f}")
         wandb.log({"Validation Loss":avg_loss, "Validation cls_loss":avg_cls_loss, "Validation reg_loss":avg_reg_loss, "Validation acc_c":avg_acc_c, "Validation acc_r":avg_acc_r , "Validation miou":avg_miou})
         wandb.log({"Epoch":epoch+1})
-    torch.save(model.state_dict(), f"{checkpoint_path}/{name}_last_{epoch+1}.pth")
+        torch.save(model.state_dict(), f"{checkpoint_path}/{name}_last.pth")
     wandb.finish()
     
 if __name__ =="__main__":
