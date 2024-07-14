@@ -43,7 +43,7 @@ def main():
     epochs = 100
     lr = 1e-4
     device = select_device()
-    batch_size = 2
+    batch_size = 16
     cls_lambda = 0.995
     reg_lambda = 0.005
     source_dataset_name = fp.split(".")[0]
@@ -236,7 +236,7 @@ def main():
         avg_miou = total_miou / total_batches
         if avg_loss < glob_val_loss:
             glob_val_loss = avg_loss
-            torch.save(model.state_dict(), f"{checkpoint_path}/{name}_best{epoch+1}.pth")
+            torch.save(model.state_dict(), f"{checkpoint_path}/{name}_best.pth")
 
         print(f"Validation Loss: {avg_loss:.4f}, Validation cls_loss: {avg_cls_loss:.4f}, Validation reg_loss: {avg_reg_loss:.4f}, Validation acc_c: {avg_acc_c:.4f}, Validation acc_r: {avg_acc_r:.4f}, Validation miou: {avg_miou:.4f}")
         wandb.log({"Validation Loss":avg_loss, "Validation cls_loss":avg_cls_loss, "Validation reg_loss":avg_reg_loss, "Validation acc_c":avg_acc_c, "Validation acc_r":avg_acc_r , "Validation miou":avg_miou})
