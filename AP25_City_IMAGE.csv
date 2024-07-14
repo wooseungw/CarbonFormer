@@ -1,4 +1,3 @@
-Image_Path,SH_Path,Carbon_Path,GT_Path
 dataset/training/image/AP25_City_IMAGE/AP_25_CT_37607090_0012.tif,dataset/training/image/AP25_City_SH/AP_25_SH_CT_37607090_0012.tif,dataset/training/label/AP25_City_Carbon/AP_25_CQ_CT_37607090_0012.tif,dataset/training/label/AP25_City_GT/AP_25_CT_37607090_0012.png
 dataset/training/image/AP25_City_IMAGE/AP_25_CT_37607090_0014.tif,dataset/training/image/AP25_City_SH/AP_25_SH_CT_37607090_0014.tif,dataset/training/label/AP25_City_Carbon/AP_25_CQ_CT_37607090_0014.tif,dataset/training/label/AP25_City_GT/AP_25_CT_37607090_0014.png
 dataset/training/image/AP25_City_IMAGE/AP_25_CT_37607090_0015.tif,dataset/training/image/AP25_City_SH/AP_25_SH_CT_37607090_0015.tif,dataset/training/label/AP25_City_Carbon/AP_25_CQ_CT_37607090_0015.tif,dataset/training/label/AP25_City_GT/AP_25_CT_37607090_0015.png

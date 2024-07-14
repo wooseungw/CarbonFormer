@@ -1,4 +1,3 @@
-Image_Path,SH_Path,Carbon_Path,GT_Path
 dataset/training/image/SN10_Forest_IMAGE/SN_10_0002.tif,dataset/training/image/SN10_Forest_SH/SN_10_SH_0002.tif,dataset/training/label/SN10_Forest_Carbon/SN_10_CQ_0002.tif,dataset/training/label/SN10_Forest_GT/SN_10_0002.png
 dataset/training/image/SN10_Forest_IMAGE/SN_10_0003.tif,dataset/training/image/SN10_Forest_SH/SN_10_SH_0003.tif,dataset/training/label/SN10_Forest_Carbon/SN_10_CQ_0003.tif,dataset/training/label/SN10_Forest_GT/SN_10_0003.png
 dataset/training/image/SN10_Forest_IMAGE/SN_10_0004.tif,dataset/training/image/SN10_Forest_SH/SN_10_SH_0004.tif,dataset/training/label/SN10_Forest_Carbon/SN_10_CQ_0004.tif,dataset/training/label/SN10_Forest_GT/SN_10_0004.png

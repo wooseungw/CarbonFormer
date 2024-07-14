@@ -1,4 +1,3 @@
-Image_Path,SH_Path,Carbon_Path,GT_Path
 dataset/training/image/AP25_Forest_IMAGE/AP_25_37604057_0002.tif,dataset/training/image/AP25_Forest_SH/AP_25_SH_37604057_0002.tif,dataset/training/label/AP25_Forest_Carbon/AP_25_CQ_37604057_0002.tif,dataset/training/label/AP25_Forest_GT/AP_25_37604057_0002.png
 dataset/training/image/AP25_Forest_IMAGE/AP_25_37604057_0006.tif,dataset/training/image/AP25_Forest_SH/AP_25_SH_37604057_0006.tif,dataset/training/label/AP25_Forest_Carbon/AP_25_CQ_37604057_0006.tif,dataset/training/label/AP25_Forest_GT/AP_25_37604057_0006.png
 dataset/training/image/AP25_Forest_IMAGE/AP_25_37604057_0022.tif,dataset/training/image/AP25_Forest_SH/AP_25_SH_37604057_0022.tif,dataset/training/label/AP25_Forest_Carbon/AP_25_CQ_37604057_0022.tif,dataset/training/label/AP25_Forest_GT/AP_25_37604057_0022.png

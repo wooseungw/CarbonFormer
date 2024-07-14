@@ -40,7 +40,7 @@ def main():
                                    (3, 2, 1), 
                                    (3, 2, 1)],
     }
-    epochs = 20
+    epochs = 100
     lr = 1e-4
     device = select_device()
     batch_size = 2
