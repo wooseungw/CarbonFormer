@@ -341,6 +341,85 @@ class CarbonFormer_v1(nn.Module):
         carbon_preds = self.to_regression(sh_fused)
         
         return gt_preds, carbon_preds
+    
+class CarbonFormer_v2(nn.Module):
+    '''
+    이미지는 3채널 입력을 받는 segformer에 넣어 특징을 추출하고 segmentation, regression시 사용한다.
+    sh를 1채널 입력을 받는 segformer에 넣어 특징을 추출하고 regression시 사용한다.
+    결합시 hierarchical 한 구조로 합친다. 
+    '''
+    def __init__(
+        self,
+        *,
+        dims = (32, 64, 160, 256),
+        reduction_ratio = (8, 4, 2, 1),
+        heads = (1, 2, 5, 8),
+        ff_expansion = (8, 8, 4, 4),
+        num_layers = 2,
+        
+        channels = 3,
+        divisor = 4,
+        decoder_dim = 256,
+        num_classes = 4,
+        stage_kernel_stride_pad = ((3, 2, 1), 
+                                   (3, 2, 1), 
+                                   (3, 2, 1),
+                                   (3, 2, 1))
+        ):
+        super().__init__()
+        dims, heads, ff_expansion, reduction_ratio, num_layers = map(
+            partial(cast_tuple, depth=4), (dims, heads, ff_expansion, reduction_ratio, num_layers))
+
+        #'네 개의 스테이지만 허용됩니다. 모든 키워드 인수는 단일 값이거나 4개의 값으로 구성된 튜플이어야 합니다.'
+        #이미지 특징 추출
+        self.img_mit = MiT(
+            channels=3,
+            dims=dims,
+            heads=heads,
+            ff_expansion=ff_expansion,
+            reduction_ratio=reduction_ratio,
+            num_layers=num_layers,
+            stage_kernel_stride_pad = stage_kernel_stride_pad
+        )
+        self.img_to_fused = nn.ModuleList([nn.Sequential(
+            nn.Conv2d(dim, decoder_dim, 1),
+            nn.Upsample(scale_factor=2 ** i)
+        ) for i, dim in enumerate(dims)])
+
+        #임분고 처리를 위한 MiT
+        self.sh_mit = MiT(
+            channels=1,
+            dims=tuple(map(lambda x: x // divisor, dims)),
+            heads=heads,
+            ff_expansion=ff_expansion,
+            reduction_ratio=reduction_ratio,
+            num_layers=num_layers,
+            stage_kernel_stride_pad = stage_kernel_stride_pad
+        )
+        self.sh_to_fused = nn.ModuleList([nn.Sequential(
+            nn.Conv2d(dim, decoder_dim//divisor, 1),
+            nn.Upsample(scale_factor=2 ** i)
+        ) for i, dim in enumerate(tuple(map(lambda x: x // divisor, dims)))])
+        
+        self.to_segmentation = Segmentation_head(decoder_dim, num_classes)
+        self.to_regression = Regression_head(decoder_dim)
+        
+    def forward(self, x, sh):
+        img_layer_outputs = self.img_mit(x, return_layer_outputs=True)
+        fused = [to_fused(output) for output, to_fused in zip(img_layer_outputs, self.img_to_fused)] #하나당 torch.Size([1, 256, 128, 128])
+        fused = torch.cat(fused, dim=1) # torch.Size([1, 1024, 128, 128])
+        
+        sh_layer_outputs = self.sh_mit(sh, return_layer_outputs=True)
+        sh_fused = [to_fused(output) for output, to_fused in zip(sh_layer_outputs, self.sh_to_fused)]
+        sh_fused = torch.cat(sh_fused, dim=1)
+        
+        sh_fused = torch.cat((fused, sh_fused), dim=1) # torch.Size([1, 2048, 128, 128])
+
+        gt_preds = self.to_segmentation(fused)
+        carbon_preds = self.to_regression(sh_fused)
+        
+        return gt_preds, carbon_preds
+    
 if __name__ == "__main__":
     args = {
         'dims': (32, 64, 160, 256),

@@ -71,17 +71,17 @@ def main():
                                    (3, 2, 1), 
                                    (3, 2, 1)],
     }
-    epochs = 1
+    epochs = 100
     lr = 1e-4
     device = select_device()
-    batch_size = 1
-    cls_lambda = 0.995
-    reg_lambda = 0.005
+    batch_size = 4
+    cls_lambda = 0.0
+    reg_lambda = 1.0
     source_dataset_name = fp.split(".")[0]
     target_dataset_name = target_fp.split(".")[0]
     model_name = "CarbonFormer_v1"
     checkpoint_path = f"checkpoints/{model_name}/"
-    name = f"{model_name}"+"B0"+source_dataset_name.replace("_IMAGE", "")+f"_{label_size}"
+    name = f"{model_name}"+"B0"+source_dataset_name.replace("_IMAGE", "")+f"_{label_size}_seg_0"
     pretrain = None
     # Create the directory if it doesn't exist
     os.makedirs(checkpoint_path, exist_ok=True)
