@@ -243,6 +243,29 @@ class Segformer(nn.Module):
         fused = torch.cat(fused, dim=1)
         return self.to_segmentation(fused)
     
+    
+class Segmentation_head(nn.Module):
+    def __init__(self, dim, num_classes):
+        super().__init__()
+        self.to_segmentation = nn.Sequential(
+            nn.Conv2d(4 * dim, dim, 1),
+            nn.Conv2d(dim, num_classes, 1),
+        )
+        
+    def forward(self, x):
+        return self.to_segmentation(x)
+    
+class Regression_head(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.to_regression =nn.Sequential(
+            nn.Conv2d(4 * dim, dim, 1),
+            nn.Conv2d(dim, 1, 1),
+        )
+        
+    def forward(self, x):
+        return self.to_regression(x)
+    
 class Segformerwithcarbon(nn.Module):
     def __init__(
         self,
@@ -281,14 +304,8 @@ class Segformerwithcarbon(nn.Module):
             nn.Upsample(scale_factor=2 ** i)
         ) for i, dim in enumerate(dims)])
 
-        self.to_segmentation = nn.Sequential(
-            nn.Conv2d(4 * decoder_dim, decoder_dim, 1),
-            nn.Conv2d(decoder_dim, num_classes, 1),
-        )
-        self.to_regression = nn.Sequential(
-            nn.Conv2d(4 * decoder_dim, decoder_dim, 1),
-            nn.Conv2d(decoder_dim, 1, 1),
-        )
+        self.to_segmentation = Segmentation_head(decoder_dim, num_classes)
+        self.to_regression = Regression_head(decoder_dim)
 
     def forward(self, x):
         layer_outputs = self.mit(x, return_layer_outputs=True)
@@ -298,62 +315,6 @@ class Segformerwithcarbon(nn.Module):
         gt_preds = self.to_segmentation(fused)
         carbon_preds = self.to_regression(fused)
         return gt_preds, carbon_preds
-    
-class Segwithcarbon(nn.Module):
-    def __init__(
-        self,
-        *,
-        dims=(64,128),
-        heads=(1, 8),
-        ff_expansion=(8, 4),
-        reduction_ratio=(8, 4),
-        num_layers=2,
-        channels=3,
-        decoder_dim=128,
-        num_classes=19,
-        stage_kernel_stride_pad = ((3, 1, 1), 
-                                   (7, 4, 3))
-    ):
-        super().__init__()
-        dim_len = len(dims)
-        dims, heads, ff_expansion, reduction_ratio, num_layers = map(
-            partial(cast_tuple, depth=dim_len), (dims, heads, ff_expansion, reduction_ratio, num_layers))
-        assert all([*map(lambda t: len(t) == dim_len, (dims, heads, ff_expansion, reduction_ratio, num_layers))])
-
-        self.mit = MiT(
-            channels=channels,
-            dims=dims,
-            heads=heads,
-            ff_expansion=ff_expansion,
-            reduction_ratio=reduction_ratio,
-            num_layers=num_layers,
-            stage_kernel_stride_pad = stage_kernel_stride_pad
-        )
-
-        self.to_fused = nn.ModuleList([nn.Sequential(
-            nn.Upsample(scale_factor=2 ** (i)),
-            nn.Conv2d(dim, decoder_dim, 1),
-            
-        ) for i, dim in enumerate(dims)])
-
-        self.segmentation_head = nn.Sequential(
-            nn.Conv2d(dim_len * decoder_dim, decoder_dim, 1),
-            nn.Conv2d(decoder_dim, num_classes, 1),
-        )
-        self.regression_head = nn.Sequential(
-            nn.Conv2d(dim_len * decoder_dim,decoder_dim, 1),
-            nn.Conv2d(decoder_dim, 1, 1),
-        )
-
-    def forward(self, x):
-        layer_outputs = self.mit(x, return_layer_outputs=True)
-
-        fused = [to_fused(output) for output, to_fused in zip(layer_outputs, self.to_fused)]
-        fused = torch.cat(fused, dim=1)
-        gt_preds = self.segmentation_head(fused)
-        carbon_preds = self.regression_head(fused)
-        return gt_preds, carbon_preds
-    
 
 ''' 
 데이터 흐름

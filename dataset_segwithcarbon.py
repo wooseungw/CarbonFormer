@@ -18,69 +18,71 @@ def get_image_paths(path):
     return image_paths
 
 class Mapping():
-    def __init__(self, folder_path):
-        if "AP10_City" in folder_path:
-            self.label_name = "AP10_City"
-            # self.label_mapping={0:   0,                      
-            #                     110: 1,
-            #                     120: 2,
-            #                     130: 3,
-            #                     140: 4,
-            #                     210: 5,
-            #                     220: 6,
-            #                     230: 7, 
-            #                     190: 8,
-            #                     255: 0}
-        if "AP25_City" in folder_path:
-            self.label_name = "AP25_City"
-            # self.label_mapping={0:   0,                      
-            #                     110: 1,
-            #                     120: 2,
-            #                     130: 3,
-            #                     140: 4,
-            #                     210: 5,
-            #                     220: 6,
-            #                     230: 7, 
-            #                     190: 8,
-            #                     255: 0}
-        if "AP10_Forest" in folder_path:
-            self.label_name = "AP10_Forest"
-            # self.label_mapping={0:  0,                      
-            #                     110: 1,
-            #                     120: 2,
-            #                     130: 3,
-            #                     140: 4,
-            #                     150: 5,
-            #                     190: 6, 
-            #                     255: 0}
-        if "AP25_Forest" in folder_path:
-            self.label_name = "AP25_Forest"
-            # self.label_mapping={0: 0,                      
-            #                     110:1,
-            #                     120:2,
-            #                     130:3,
-            #                     140: 4,
-            #                     150: 5,
-            #                     190: 6, 
-            #                     255: 0}
-        if "SN10_Forest" in folder_path:
-            self.label_name = "SN10_Forest"
-            # self.label_mapping={0:  0,                      
-            #                     140: 1,
-            #                     150: 2,
-            #                     190: 3, 
-            #                     255: 0}
-        self.label_mapping={0:   0,                      
-                                110: 1,
-                                120: 1,
-                                130: 1,
-                                140: 2,
-                                150: 1,
-                                210: 2,
-                                220: 3,
-                                230: 3, 
-                                190: 3,
-                                255: 0}
+    def __init__(self, folder_path, combine=False):
+        if combine != True:
+            if "AP10_City" in folder_path:
+                self.label_name = "AP10_City"
+                self.label_mapping={0:   0,                      
+                                    110: 1,
+                                    120: 2,
+                                    130: 3,
+                                    140: 4,
+                                    210: 5,
+                                    220: 6,
+                                    230: 7, 
+                                    190: 8,
+                                    255: 0}
+            if "AP25_City" in folder_path:
+                self.label_name = "AP25_City"
+                self.label_mapping={0:   0,                      
+                                    110: 1,
+                                    120: 2,
+                                    130: 3,
+                                    140: 4,
+                                    210: 5,
+                                    220: 6,
+                                    230: 7, 
+                                    190: 8,
+                                    255: 0}
+            if "AP10_Forest" in folder_path:
+                self.label_name = "AP10_Forest"
+                self.label_mapping={0:  0,                      
+                                    110: 1,
+                                    120: 2,
+                                    130: 3,
+                                    140: 4,
+                                    150: 5,
+                                    190: 6, 
+                                    255: 0}
+            if "AP25_Forest" in folder_path:
+                self.label_name = "AP25_Forest"
+                self.label_mapping={0: 0,                      
+                                    110:1,
+                                    120:2,
+                                    130:3,
+                                    140: 4,
+                                    150: 5,
+                                    190: 6, 
+                                    255: 0}
+            if "SN10_Forest" in folder_path:
+                self.label_name = "SN10_Forest"
+                self.label_mapping={0:  0,                      
+                                    140: 1,
+                                    150: 2,
+                                    190: 3, 
+                                    255: 0}
+        if combine == True:
+            self.label_mapping={0:   0,                      
+                                    110: 1,
+                                    120: 1,
+                                    130: 1,
+                                    140: 2,
+                                    150: 1,
+                                    210: 2,
+                                    220: 3,
+                                    230: 3, 
+                                    190: 3,
+                                    255: 0}
     def __call__(self, img):
         return self.gt_mapping(img)
 
@@ -101,7 +103,7 @@ class Mapping():
         return mapped_image
     
 class CarbonDataset(Dataset):
-    def __init__(self, folder_path, image_transform=None,sh_transform=None,label_transform=None, mode = "Train"):
+    def __init__(self, folder_path, image_transform=None,sh_transform=None,label_transform=None, mode = "Train", combine=False):
         if mode == "Valid":
             folder_path = folder_path.replace("Training",'Validation')
             print("Validation Set")
@@ -117,7 +119,7 @@ class CarbonDataset(Dataset):
         self.image_transform = image_transform
         self.sh_transform = sh_transform
         self.label_transform = label_transform
-        self.Mapping = Mapping(folder_path)
+        self.Mapping = Mapping(folder_path, combine=combine)
 
     def __len__(self):
         return len(self.image_paths)
@@ -153,7 +155,7 @@ class CarbonDataset(Dataset):
         return image, sh , carbon , gt
 
 class CarbonDataset_csv(Dataset):
-    def __init__(self, csv_file, image_transform=None, sh_transform=None, label_transform=None, mode="Train"):
+    def __init__(self, csv_file, image_transform=None, sh_transform=None, label_transform=None, mode="Train", combine=False):
         self.mode = mode
         self.data = pd.read_csv(csv_file, header=None, names=['Image_Path', 'SH_Path', 'Carbon_Path', 'GT_Path'])        
 
@@ -161,7 +163,7 @@ class CarbonDataset_csv(Dataset):
         self.image_transform = image_transform
         self.sh_transform = sh_transform
         self.label_transform = label_transform
-        self.Mapping = Mapping(self.data.iloc[0, 0])
+        self.Mapping = Mapping(self.data.iloc[0, 0], combine=combine)
 
     def __len__(self):
         return len(self.data)

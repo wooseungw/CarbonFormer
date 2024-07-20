@@ -18,21 +18,20 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Segformer with Carbon')
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
+    parser.add_argument('--epochs', type=int, default=40, help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     parser.add_argument('--cls_lambda', type=float, default=1.0, help='classification loss weight')
-    parser.add_argument('--reg_lambda', type=float, default=0.005, help='regression loss weight')
+    parser.add_argument('--reg_lambda', type=float, default=0.0005, help='regression loss weight')
     parser.add_argument('--source_fp', type=str, default='AP25_Forest_IMAGE.csv', help='source dataset file')
     parser.add_argument('--target_fp', type=str, default='AP25_City_IMAGE.csv', help='target dataset file')
-    parser.add_argument('--pretrain', type=str, default="checkpoints/Segformerwithcarbon/SegformerwithcarbonB0AP25_Forest_128_last.pth", help='path to pretrained model')
+    parser.add_argument('--pretrain', type=str, default="checkpoints/Segformerwithcarbon_Forest/Segformerwithcarbon_ForestB0AP25_Forest_128_checkpoint_60.pth", help='path to pretrained model')
     return parser.parse_args()
 
 def get_transforms(label_size):
     image_transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
     sh_transform = transforms.Compose([
         transforms.Resize((256, 256)),
@@ -96,10 +95,10 @@ def main():
     logger = logging.getLogger(__name__)
 
     FOLDER_PATH = {
-        'AP10_Forest_IMAGE.csv': 4,
-        'AP25_Forest_IMAGE.csv': 4,   
-        'AP10_City_IMAGE.csv': 4,
-        'AP25_City_IMAGE.csv': 4,
+        'AP10_Forest_IMAGE.csv': 7,
+        'AP25_Forest_IMAGE.csv': 7,   
+        'AP10_City_IMAGE.csv': 9,
+        'AP25_City_IMAGE.csv': 9,
         'SN10_Forest_IMAGE.csv': 4,
     }
     
@@ -112,14 +111,15 @@ def main():
         'num_layers': (2, 2, 6, 3),
         'decoder_dim': 256,
         'channels': 4,
-        'num_classes': 4,
+        'num_classes': FOLDER_PATH['AP25_Forest_IMAGE.csv'],
         'stage_kernel_stride_pad': [(4, 2, 1), (3, 2, 1), (3, 2, 1), (3, 2, 1)],
     }
 
     device = select_device()
     source_dataset_name = args.source_fp.split(".")[0]
     target_dataset_name = args.target_fp.split(".")[0]
-    model_name = "Segformerwithcarbon"
+    
+    model_name = "Segformerwithcarbon_Forest"
     checkpoint_path = f"checkpoints/{model_name}/"
     name = f"{model_name}"+"B0"+source_dataset_name.replace("_IMAGE", "")+f"_{label_size}"
     
@@ -131,15 +131,15 @@ def main():
 
     image_transform, sh_transform, label_transform = get_transforms(label_size)
 
-    train_dataset = CarbonDataset_csv(args.source_fp, image_transform, sh_transform, label_transform, mode="Train")
+    train_dataset = CarbonDataset_csv(args.source_fp, image_transform, sh_transform, label_transform, mode="Train", combine=False)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-    val_dataset = CarbonDataset_csv(args.source_fp, image_transform, sh_transform, label_transform, mode="Valid")
+    val_dataset = CarbonDataset_csv(args.source_fp, image_transform, sh_transform, label_transform, mode="Valid",combine=False)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8, pin_memory=True)
     
-    target_dataset = CarbonDataset_csv(args.target_fp, image_transform, sh_transform, label_transform, mode="Train")
-    target_loader = DataLoader(target_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-    target_val_dataset = CarbonDataset_csv(args.target_fp, image_transform, sh_transform, label_transform, mode="Valid")
-    target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    # target_dataset = CarbonDataset_csv(args.target_fp, image_transform, sh_transform, label_transform, mode="Train", combine=False)
+    # target_loader = DataLoader(target_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    # target_val_dataset = CarbonDataset_csv(args.target_fp, image_transform, sh_transform, label_transform, mode="Valid", combine=False)
+    # target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=8, pin_memory=True)
      
     model = Segformerwithcarbon(**model_args).to(device)
     if args.pretrain:
@@ -152,39 +152,40 @@ def main():
     best_val_loss = float('inf')
     for epoch in range(args.epochs):
         forest_stats = train_epoch(epoch, device, model, optimizer, loss_fn, train_loader)
-        city_stats = train_epoch(epoch, device, model, optimizer, loss_fn, target_loader, domain="City")
+        #city_stats = train_epoch(epoch, device, model, optimizer, loss_fn, target_loader, domain="City")
         
-        train_stats = {k: (forest_stats[k] + city_stats[k]) / 2 for k in forest_stats}
+        #train_stats = {k: (forest_stats[k] + city_stats[k]) / 2 for k in forest_stats}
         
-        logger.info(f"Epoch {epoch+1}, Train Loss: {train_stats['total_loss']:.4f}, "
-                    f"Train cls_loss: {train_stats['total_cls_loss']:.4f}, "
-                    f"Train reg_loss: {train_stats['total_reg_loss']:.4f}, "
-                    f"Train acc_c: {train_stats['total_acc_c']:.4f}, "
-                    f"Train acc_r: {train_stats['total_acc_r']:.4f}, "
-                    f"Train miou: {train_stats['total_miou']:.4f}, "
-                    f"Train rmse: {train_stats['total_rmse']:.4f}")
+        logger.info(f"Epoch {epoch+1}, Train Loss: {forest_stats['total_loss']:.4f}, "
+                    f"Train cls_loss: {forest_stats['total_cls_loss']:.4f}, "
+                    f"Train reg_loss: {forest_stats['total_reg_loss']:.4f}, "
+                    f"Train acc_c: {forest_stats['total_acc_c']:.4f}, "
+                    f"Train acc_r: {forest_stats['total_acc_r']:.4f}, "
+                    f"Train miou: {forest_stats['total_miou']:.4f}, "
+                    f"Train rmse: {forest_stats['total_rmse']:.4f}")
         
-        wandb.log({"Train": train_stats, "epoch": epoch+1})
+        wandb.log({"Train": forest_stats, "epoch": epoch+1})
 
         forest_val_stats = validate(model, device, loss_fn, val_loader)
-        city_val_stats = validate(model, device, loss_fn, target_val_loader, domain="City")
         
-        val_stats = {k: (forest_val_stats[k] + city_val_stats[k]) / 2 for k in forest_val_stats}
+        #city_val_stats = validate(model, device, loss_fn, target_val_loader, domain="City")
         
-        logger.info(f"Validation Loss: {val_stats['total_loss']:.4f}, "
-                    f"Validation cls_loss: {val_stats['total_cls_loss']:.4f}, "
-                    f"Validation reg_loss: {val_stats['total_reg_loss']:.4f}, "
-                    f"Validation acc_c: {val_stats['total_acc_c']:.4f}, "
-                    f"Validation acc_r: {val_stats['total_acc_r']:.4f}, "
-                    f"Validation miou: {val_stats['total_miou']:.4f}, "
-                    f"Validation rmse: {val_stats['total_rmse']:.4f}")
+        #val_stats = {k: (forest_val_stats[k] + city_val_stats[k]) / 2 for k in forest_val_stats}
         
-        wandb.log({"Validation": val_stats, "epoch": epoch+1})
+        logger.info(f"Validation Loss: {forest_val_stats['total_loss']:.4f}, "
+                    f"Validation cls_loss: {forest_val_stats['total_cls_loss']:.4f}, "
+                    f"Validation reg_loss: {forest_val_stats['total_reg_loss']:.4f}, "
+                    f"Validation acc_c: {forest_val_stats['total_acc_c']:.4f}, "
+                    f"Validation acc_r: {forest_val_stats['total_acc_r']:.4f}, "
+                    f"Validation miou: {forest_val_stats['total_miou']:.4f}, "
+                    f"Validation rmse: {forest_val_stats['total_rmse']:.4f}")
         
-        scheduler.step(val_stats['total_loss'])
+        wandb.log({"Validation": forest_val_stats, "epoch": epoch+1})
+        
+        scheduler.step(forest_val_stats['total_loss'])
 
-        if val_stats['total_loss'] < best_val_loss:
-            best_val_loss = val_stats['total_loss']
+        if forest_val_stats['total_loss'] < best_val_loss:
+            best_val_loss = forest_val_stats['total_loss']
             torch.save(model.state_dict(), f"{checkpoint_path}/{name}_best.pth")
             logger.info(f"New best model saved at epoch {epoch+1}")
 
