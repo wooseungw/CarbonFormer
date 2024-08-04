@@ -5,11 +5,11 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from models.carbonformer import CarbonFormer_v1
+from model.carbonformer import CarbonFormer_v1
 from dataset import CarbonDataset, CarbonDataset_csv
-from models.util import select_device, mix_patch
+from model.util import select_device, mix_patch
 from tqdm import tqdm
-from models.metrics import CarbonLoss
+from model.metrics import CarbonLoss
 
 import wandb
 import os
