@@ -5,9 +5,9 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from model.unet import UNet_carbon
+from models.unet import UNet_carbon
 from dataset_segwithcarbon import CarbonDataset, CarbonDataset_csv
-from model.util import select_device, mix_patch
+from models.util import select_device, mix_patch
 from tqdm import tqdm
 # from model.metrics import CarbonLoss , CarbonLossWithRMSE
 import os
@@ -22,10 +22,10 @@ from tqdm import tqdm
 from config.param_parser import InferenceParser
 from evaluate import corr_wCla, r_square_wCla
 from utils.utils import make_directory
-from model.build import build_model
+from models.build import build_model
 from data.carbon_dataset import CarbonDataset2
 from data.build import build_data_loader
-from model.metrics import CarbonLossWithRMSE, CarbonLoss
+from models.metrics import CarbonLossWithRMSE, CarbonLoss
 from config_mf import CONFIGURE
 from evaluate import corr, r_square, corr_wZero, r_square_wZero
 def fast_hist(label_true, label_pred, n_class):

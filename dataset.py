@@ -221,10 +221,10 @@ def imshow(tensor, title=None):
 if __name__ == "__main__":
     # Set the folder path for the dataset
     folder_paths = ['dataset/training/image/AP25_City_IMAGE','dataset/training/image/AP25_Forest_IMAGE']
-    transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
-    transform_label = transforms.Compose([transforms.Resize((256//2, 256//2))])
+    transform = transforms.Compose([transforms.Resize((512, 512)), transforms.ToTensor()])
+    transform_label = transforms.Compose([transforms.Resize((512, 512))])
     # Create an instance of the CustomImageDataset class
-    dataset = CarbonDataset_csv("dataset/SN10_Forest_IMAGE.csv", transform, transform, transform_label, mode="Train")  
+    dataset = CarbonDataset_csv("train_AP25_Forest_IMAGE.csv", transform, transform, transform_label, mode="Train")  
     print(len(dataset))
   
   
@@ -239,42 +239,42 @@ if __name__ == "__main__":
         print(image)
         plt.subplot(2, 2, 1)
         plt.imshow(image.squeeze().permute(1, 2, 0))
-        plt.title("Image")
+        plt.title("1. Image")
         plt.xticks([])
         plt.yticks([])
         
         #sh
-        print("SH:", sh.shape, sh.type())
+        print("2. SH:", sh.shape, sh.type())
         print(sh.min(), sh.max())
         print(sh)
         plt.subplot(2, 2, 2)
-        plt.imshow(sh.squeeze(), cmap='gray')
-        plt.title("SH")
+        plt.imshow(sh.squeeze())
+        plt.title("2. SH")
         plt.xticks([])
         plt.yticks([])
         
         # carbon
-        print("Carbon:", carbon.shape, carbon.type())
+        print("3. Carbon:", carbon.shape, carbon.type())
         print(carbon.min(), carbon.max())
         print(carbon)
         plt.subplot(2, 2, 3)
-        plt.imshow(carbon.squeeze(), cmap='gray')
-        plt.title("Carbon")
+        plt.imshow(carbon.squeeze())
+        plt.title("3. Carbon")
         plt.xticks([])
         plt.yticks([])
         
         # gt
-        print("GT:", gt.shape, gt.type())
+        print("4. GT:", gt.shape, gt.type())
         print(gt.min(), gt.max())
         print(carbon.shape)
         print(gt)
         plt.subplot(2, 2, 4)
-        plt.imshow(gt.squeeze(), cmap='gray')
-        plt.title("GT")
+        plt.imshow(gt.squeeze())
+        plt.title("4. GT")
         plt.xticks([])
         plt.yticks([])
         
-        
+        plt.tight_layout()
         plt.show()
 
         # print(image.shape, image.type())
